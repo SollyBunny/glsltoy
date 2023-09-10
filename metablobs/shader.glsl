@@ -6,8 +6,7 @@ out vec4 FragColor;
 
 uniform vec2 size;
 uniform float time;
-uniform vec2 mouse;
-uniform int btn;
+uniform vec3 mouse;
 
 layout (std140) uniform Blobs {
     vec4 pos[BLOBS];  // You can adjust the size as needed
@@ -74,7 +73,7 @@ void main() {
         gl_FragCoord.x + noise.r * 30.0,
         gl_FragCoord.y + noise.g * 30.0
     );
-    vec2 dist = vec2(gl_FragCoord) - mouse;
+    vec2 dist = vec2(gl_FragCoord) - vec2(mouse);
     float radius = length(dist);
     if (radius < 100) {
         coord += dist * sin((1 - radius / 100) * 2 * 3.14);

@@ -186,10 +186,19 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
     // Pass mouse
 	static double newX, newY;
     static double mouseX, mouseY;
+	static int mouseBtn;
     glfwGetCursorPos(window, &newX, &newY);
 	mouseX = (mouseX * 5 + newX) / 6;
 	mouseY = (mouseY * 5 + newY) / 6;
-    glUniform2f(glGetUniformLocation(shader, "mouse"), mouseX, h - mouseY);
+	if (getMouseButtonState(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+		mouseBtn = 1;
+	else if (getMouseButtonState(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+		mouseBtn = 2;
+	else if (getMouseButtonState(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+		mouseBtn = 3;
+	else
+		mouseBtn = 0;
+    glUniform3f(glGetUniformLocation(shader, "mouse"), mouseX, h - mouseY, mouseBtn);
 
 	for (unsigned int i = 0; i < BLOBS * 4; i += 4) {
 		// printf("%.2f %.2f %.2f\n", pos[i], pos[i + 1], pos[i + 2]);

@@ -116,8 +116,12 @@ int main(int argc, char *argv[]) {
 	sprintf(buff, "%s/tick.so", sofile);
 	handle = dlopen(buff, RTLD_LAZY);
 	if (!handle) {
-		printf("%s\n", dlerror());
-		die("Coudn't open tick.so");
+		strcpy(buff, dlerror()); // Save error just in case
+		handle = dlopen("./tick.so", RTLD_LAZY);
+		if (!handle) {
+			printf("%s\n%s\n", buff, dlerror());
+			die("Coudn't open tick.so");
+		}
 	}
 
 	// Get a pointer to the tick function
@@ -161,19 +165,20 @@ int main(int argc, char *argv[]) {
 		die("Failed to initialize GLEW");
 	}
 
-	// Read vertex shader code from file
-	sprintf(buff, "%s/vertex_shader.glsl", sofile);
-	char* vertexShaderSource = readShaderFile(buff);
-	if (!vertexShaderSource) {
-		die("No vertex_shader.glsl found");
-	}
+	// Vertex Shader
+	char* vertexShaderSource =
+		"#version 330 core\n"
+		"layout(location = 0) in vec2 position;"
+		"void main() {"
+			"gl_Position = vec4(position, 0.0, 1.0);"
+		"}"
+	;
 
 	// Read fragment shader code from file
-	sprintf(buff, "%s/fragment_shader.glsl", sofile);
+	sprintf(buff, "%s/shader.glsl", sofile);
 	char* fragmentShaderSource = readShaderFile(buff);
 	if (!fragmentShaderSource) {
-		free(vertexShaderSource);
-		die("No fragment_shader.glsl found");
+		die("No shader.glsl found");
 	}
 
 	// Create and compile vertex shader
@@ -208,7 +213,6 @@ int main(int argc, char *argv[]) {
 	glLinkProgram(shaderProgram);
 
 	// Free the allocated memory for shader source
-	free(vertexShaderSource);
 	free(fragmentShaderSource);
 
 	srand(time(NULL));

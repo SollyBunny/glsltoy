@@ -2,7 +2,6 @@
 
 out vec4 FragColor;
 
-uniform vec2 size;
 uniform float time;
 uniform vec2 mouse;
 uniform int btn;
@@ -48,7 +47,7 @@ vec3 rainbow(float t) {
 void main() {
 
     float index =
-    	gl_FragCoord.x
+        gl_FragCoord.x
     	+ time
     	+ sin((mouse.x - gl_FragCoord.x) / (mouse.y - gl_FragCoord.y))
     ;
