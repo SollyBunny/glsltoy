@@ -1,6 +1,6 @@
 #version 330 core
 
-#define BLOBS 20
+#define BLOBS 100
 
 out vec4 FragColor;
 
@@ -10,13 +10,56 @@ uniform vec2 mouse;
 uniform int btn;
 
 layout (std140) uniform Blobs {
-    vec3 pos[BLOBS];  // You can adjust the size as needed
+    vec4 pos[BLOBS];  // You can adjust the size as needed
 };
+
+vec3 rainbow(float t) {
+    float r, g, b;
+    t = mod(t, 1);
+
+    if (t >= 0.0 && t < 1.0 / 6.0) {
+        t = t / (1.0 / 6.0);
+        r = 1;
+        g = t;
+        b = 0;
+    } else if (t >= 1.0 / 6.0 && t < 2.0 / 6.0) {
+        t = (t - 1.0 / 6.0) / (1.0 / 6.0);
+        r = 1 - t;
+        g = 1;
+        b = 0;
+    } else if (t >= 2.0 / 6.0 && t < 3.0 / 6.0) {
+        t = (t - 2.0 / 6.0) / (1.0 / 6.0);
+        r = 0;
+        g = 1;
+        b = t;
+    } else if (t >= 3.0 / 6.0 && t < 4.0 / 6.0) {
+        t = (t - 3.0 / 6.0) / (1.0 / 6.0);
+        r = 0;
+        g = 1 - t;
+        b = 1;
+    } else if (t >= 4.0 / 6.0 && t < 5.0 / 6.0) {
+        t = (t - 4.0 / 6.0) / (1.0 / 6.0);
+        r = t;
+        g = 0;
+        b = 1;
+    } else {
+        t = (t - 5.0 / 6.0) / (1.0 / 6.0);
+        r = 1;
+        g = 0;
+        b = 1 - t;
+    }
+    return vec3(r, g, b);
+}
 
 uniform vec3 bg, fg, hg;
 vec3 lava(float t) {
+    vec3 color;
     t = clamp(t, 0.0, 1.0);
-    return mix(mix(bg, fg, log(t)), hg, t > 0.8 ? (t - 0.8) * 5 : 0.0);
+    color = mix(bg, fg, pow(t * 1e3, 2));
+    if (t > 0.5) {
+        color = mix(hg, color, (t - 0.5) * 2);
+    }
+    return color;
 }
 
 uniform sampler2D noiseTexture;
@@ -34,11 +77,11 @@ void main() {
             pow(pos[i].x - x, 2) +
             pow(pos[i].y - y, 2)
         );
-        if (dis < 10.0) {
-            FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-            return;
-        }
-        index += 1000.0 / dis * sqrt(abs(pos[i].z));
+        // if (dis < 10.0) {
+        //     FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        //     return;
+        // }
+        index += 1.0 / dis * pos[i].w;
     }
 
     FragColor = vec4(lava(index), 1.0);

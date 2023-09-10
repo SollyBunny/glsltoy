@@ -90,10 +90,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (child_pid == 0) { // I'm the child
-
 		execlp("make", "make", "-C", argv[1], NULL);
 		die("Failed to run make file");
-
 	}
 	wait(NULL);
 
@@ -184,12 +182,13 @@ int main(int argc, char *argv[]) {
 	free(vertexShaderSource);
 	free(fragmentShaderSource);
 
+	srand(time(NULL));
+
 	if (init) {
 		init(window, shaderProgram, windowWidth, windowHeight);
 	}
 
 	glUseProgram(shaderProgram);
-
 
 	double time, lasttime, dt;
 	lasttime = glfwGetTime();

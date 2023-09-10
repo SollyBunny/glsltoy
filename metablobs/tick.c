@@ -26,12 +26,11 @@ void warn(char *msg) {
 #define randf() ((float)rand() / (float)RAND_MAX)
 #define rands() (rand() > (RAND_MAX / 2) ? 1 : -1)
 
-#define BLOBS 20
-GLfloat pos[BLOBS * 3];
+#define BLOBS 100
+GLfloat pos[BLOBS * 4];
+float vel[BLOBS * 4];
 
-float vel[BLOBS * 3];
-
-int z = 1;
+float z = 6.28;
 int xypad = 10;
 
 GLuint ubo;
@@ -132,12 +131,16 @@ int getMouseButtonState(GLFWwindow* window, int button) {
     return glfwGetMouseButton(window, button);
 }
 
+float timeOffset;
+
 void init(GLFWwindow* window, GLuint shader, int w, int h) {
 
-	for (unsigned int i = 0; i < BLOBS * 3; i += 3) {
+	timeOffset = fmod(rand(), 1e3);
+
+	for (unsigned int i = 0; i < BLOBS * 4; i += 4) {
 		vel[i]     = (randf() * 0.5 + 1) * rands();
 		vel[i + 1] = (randf() * 0.5 + 1) * rands();
-		vel[i + 2] = (randf() * 0.01 + 0.05) * rands();
+		vel[i + 2] = (randf() * 0.01 + 0.01) * rands();
 		pos[i]     = randf() * w;
 		pos[i + 1] = randf() * h;
 		pos[i + 2] = randf() * (z - 0.5) + 0.5;
@@ -173,7 +176,6 @@ void init(GLFWwindow* window, GLuint shader, int w, int h) {
 
 		glUniform1i(glGetUniformLocation(shader, "noiseTexture"), textureID);
 
-
 		// Free the image data
 		free(image_data);
     }
@@ -181,13 +183,12 @@ void init(GLFWwindow* window, GLuint shader, int w, int h) {
 
 void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 
-	for (unsigned int i = 0; i < BLOBS * 3; i += 3) {
-		if (pos[i + 2] < 0.4) {
-			printf("%f\n", pos[i + 2]);
-		}
+	for (unsigned int i = 0; i < BLOBS * 4; i += 4) {
+		// printf("%.2f %.2f %.2f\n", pos[i], pos[i + 1], pos[i + 2]);
 		pos[i] += vel[i];
 		pos[i + 1] += vel[i + 1];
 		pos[i + 2] += vel[i + 2];
+		pos[i + 3] = pow(sin(pos[i + 2]) + 0.5, 2) * 20;
 		if (pos[i] < -xypad) { // x
 			vel[i] = fabs(vel[i]);
 			pos[i] = -xypad;
@@ -201,13 +202,36 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 			vel[i + 1] = -fabs(vel[i + 1]);
 			pos[i + 1] = h + xypad;
 		}
-		if (pos[i + 2] < 0.5) { // z
+		if (pos[i + 2] < 0.1) { // z
 			vel[i + 2] = fabs(vel[i + 2]);
-			pos[i + 2] = 0.5;
+			pos[i + 2] = 0.1;
 		} else if (pos[i + 2] > z) {
 			vel[i + 2] = fabs(vel[i + 2]) * -1;
 			pos[i + 2] = z;
 		}
+		// Gravity
+		for (int j = 0; j < i; j += 4) {
+			static float dis;
+			dis = sqrt(
+				pow(pos[i] - pos[j], 2) +
+				pow(pos[i + 1] - pos[j + 1], 2)
+			) - 1e3;
+			if (dis < 0.1) dis = 0.1;
+			// 10-\sqrt{\frac{30}{x-5}}
+			dis = 10 - sqrt(30 / dis);
+			dis /= 1e5;
+			pos[i] += (pos[j] - pos[i]) * dis;
+			pos[i + 1] += (pos[j + 1] - pos[i + 1]) * dis;
+		}
+		// // Clamp
+		// #define CLAMP 1
+		// if (vel[i] < -CLAMP) vel[i] = -CLAMP;
+		// else if (vel[i] > CLAMP) vel[i] = CLAMP;
+		// if (vel[i + 1] < -CLAMP) vel[i + 1] = -CLAMP;
+		// else if (vel[i + 1] > CLAMP) vel[i + 1] = CLAMP;
+		// // Friction
+		// vel[i] *= 0.9;
+		// vel[i + 1] *= 0.9;
 	}
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(pos), pos, GL_STATIC_DRAW); 
 	GLuint blockIndex = glGetUniformBlockIndex(shader, "Blobs");
@@ -215,7 +239,7 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 
 	// Pass time
     static float time;
-    time = glfwGetTime();
+    time = glfwGetTime() + timeOffset;
     glUniform1f(glGetUniformLocation(shader, "time"), time);
 
 	// Pass texture offset
@@ -229,23 +253,23 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 	static RGB rgb;
 	// printf("\x1b[2J\x1b[H");
 	// Bg
-	hsl.h = fmod(time / 20, 0.99);
-	hsl.s = 0.3;
-	hsl.l = 0.5;
+	hsl.h = fmod(time / 100, 0.5);
+	hsl.s = fmod(5 + time / 200, 0.5) + 0.25;
+	hsl.l = fmod(10 + time / 300, 0.5) + 0.25;
 	rgb = HSLtoRGB(hsl);
 	// printf("bg: %d %d %d\n", (int)(rgb.r * 255), (int)(rgb.g * 255), (int)(rgb.b *255));
 	glUniform3f(glGetUniformLocation(shader, "bg"), rgb.r, rgb.g, rgb.b);
 	// Fg
-	hsl.h = fmod(5 + time / 10, 0.99);
-	hsl.s = 0.1;
-	hsl.l = 0.7;
+	hsl.h = fmod(5 + time / 150, 0.6);
+	hsl.s = fmod(10 + time / 250, 0.6) + 0.2;
+	hsl.l = fmod(15 + time / 350, 0.6) + 0.2;
 	rgb = HSLtoRGB(hsl);
 	// printf("fg: %d %d %d\n", (int)(rgb.r * 255), (int)(rgb.g * 255), (int)(rgb.b *255));
 	glUniform3f(glGetUniformLocation(shader, "fg"), rgb.r, rgb.g, rgb.b);
-	// Fg
-	hsl.h = fmod(50 + time / 20, 0.99);
-	hsl.s = 1;
-	hsl.l = 0.7;
+	// Hg
+	hsl.h = fmod(20 + time / 200, 0.9);
+	hsl.s = fmod(25 + time / 300, 0.8) + 0.2;
+	hsl.l = fmod(30 + time / 400, 0.8) + 0.2;
 	rgb = HSLtoRGB(hsl);
 	// printf("hg: %d %d %d\n", (int)(rgb.r * 255), (int)(rgb.g * 255), (int)(rgb.b *255));
 	glUniform3f(glGetUniformLocation(shader, "hg"), rgb.r, rgb.g, rgb.b);
