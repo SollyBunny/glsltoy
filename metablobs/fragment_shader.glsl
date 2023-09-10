@@ -55,7 +55,7 @@ uniform vec3 bg, fg, hg;
 vec3 lava(float t) {
     vec3 color;
     t = clamp(t, 0.0, 1.0);
-    color = mix(bg, fg, pow(t * 1e3, 2));
+    color = mix(bg, fg, tan(t * 2));
     if (t > 0.5) {
         color = mix(hg, color, (t - 0.5) * 2);
     }
@@ -70,12 +70,20 @@ void main() {
     float dis;
     vec4 noise;
     noise = texture(noiseTexture, vec2(gl_FragCoord) / 256.0 + noiseOffset);
-    float x = gl_FragCoord.x + noise.r * 30.f;
-    float y = gl_FragCoord.y + noise.g * 30.f;
+    vec2 coord = vec2(
+        gl_FragCoord.x + noise.r * 30.0,
+        gl_FragCoord.y + noise.g * 30.0
+    );
+    vec2 dist = vec2(gl_FragCoord) - mouse;
+    float radius = length(dist);
+    if (radius < 100) {
+        coord += dist * sin((1 - radius / 100) * 2 * 3.14);
+    }
+    
     for (int i = 0; i < BLOBS; ++i) {
         dis = (
-            pow(pos[i].x - x, 2) +
-            pow(pos[i].y - y, 2)
+            pow(pos[i].x - coord.x, 2) +
+            pow(pos[i].y - coord.y, 2)
         );
         // if (dis < 10.0) {
         //     FragColor = vec4(0.0, 0.0, 0.0, 1.0);

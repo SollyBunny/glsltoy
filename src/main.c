@@ -1,14 +1,23 @@
 
 #include <GL/glew.h>
+
+#define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
+
+#include <X11/X.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <time.h>
+
 #include <dlfcn.h>
 #include <sys/wait.h>
-#include <time.h>
 
 #define FPS 20
 
@@ -70,16 +79,24 @@ void *handle;
 
 int main(int argc, char *argv[]) {
 
-	if (argc != 2) {
-		die("Usage: glsl [tick.so]");
+	char *sofile = NULL;
+
+	for (unsigned int i = 1; i < argc; ++i) {
+		if (strcmp(argv[i], "-h") == 0) {
+			die("Usage: glsl [tick.so] -h");
+		} else if (sofile) {
+			die("Too many arguments");
+		} else {
+			sofile = argv[i];
+		}
 	}
 
-	// Check if argv[1] exists and is a directory
-	if (access(argv[1], F_OK) != 0) {
+	// Check if sofile exists and is a directory
+	if (access(sofile, F_OK) != 0) {
 		die("Folder not found");
-	} else if (access(argv[1], R_OK) != 0) {
+	} else if (access(sofile, R_OK) != 0) {
 		die("Folder not readable");
-	} else if (access(argv[1], X_OK) != 0) {
+	} else if (access(sofile, X_OK) != 0) {
 		die("Folder not a folder");
 	}
 
@@ -90,13 +107,13 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (child_pid == 0) { // I'm the child
-		execlp("make", "make", "-C", argv[1], NULL);
+		execlp("make", "make", "-C", sofile, NULL);
 		die("Failed to run make file");
 	}
 	wait(NULL);
 
 	// Load tick function
-	sprintf(buff, "%s/tick.so", argv[1]);
+	sprintf(buff, "%s/tick.so", sofile);
 	handle = dlopen(buff, RTLD_LAZY);
 	if (!handle) {
 		printf("%s\n", dlerror());
@@ -124,7 +141,19 @@ int main(int argc, char *argv[]) {
 		glfwTerminate();
 		die("Failed to create GLFW window");
 	}
-
+	Display *xDisplay = glfwGetX11Display();
+	Window xWindow = glfwGetX11Window(window);
+	XUnmapWindow(xDisplay, xWindow);
+	XSync(xDisplay, False);
+	XSetWindowAttributes xAttrs;
+	xAttrs.override_redirect = True;
+	if (XChangeWindowAttributes(xDisplay, xWindow, CWOverrideRedirect, &xAttrs) < 0) {
+		die("Failed to set window attributes");
+	}
+	XSync(xDisplay, False);
+	XMapWindow(xDisplay, xWindow);
+	XLowerWindow(xDisplay, xWindow);
+	XSync(xDisplay, False);
 	glfwMakeContextCurrent(window);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
@@ -133,14 +162,14 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Read vertex shader code from file
-	sprintf(buff, "%s/vertex_shader.glsl", argv[1]);
+	sprintf(buff, "%s/vertex_shader.glsl", sofile);
 	char* vertexShaderSource = readShaderFile(buff);
 	if (!vertexShaderSource) {
 		die("No vertex_shader.glsl found");
 	}
 
 	// Read fragment shader code from file
-	sprintf(buff, "%s/fragment_shader.glsl", argv[1]);
+	sprintf(buff, "%s/fragment_shader.glsl", sofile);
 	char* fragmentShaderSource = readShaderFile(buff);
 	if (!fragmentShaderSource) {
 		free(vertexShaderSource);
@@ -198,7 +227,7 @@ int main(int argc, char *argv[]) {
 	sleepTime.tv_nsec = 0;
 	
 	while (!glfwWindowShouldClose(window)) {
-		printf("\x1b[2J\x1b[H");
+		// printf("\x1b[2J\x1b[H");
 		time = glfwGetTime();
 		dt = time - lasttime;
 		if (1.0 / dt > FPS) {
@@ -207,7 +236,7 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 		
-		printf("FPS: %f\n", 1.0 / dt);
+		// printf("FPS: %f\n", 1.0 / dt);
 		lasttime = time;
 		
 		glClear(GL_COLOR_BUFFER_BIT);

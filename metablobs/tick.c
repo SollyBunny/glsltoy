@@ -183,12 +183,20 @@ void init(GLFWwindow* window, GLuint shader, int w, int h) {
 
 void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 
+    // Pass mouse
+	static double newX, newY;
+    static double mouseX, mouseY;
+    glfwGetCursorPos(window, &newX, &newY);
+	mouseX = (mouseX * 5 + newX) / 6;
+	mouseY = (mouseY * 5 + newY) / 6;
+    glUniform2f(glGetUniformLocation(shader, "mouse"), mouseX, h - mouseY);
+
 	for (unsigned int i = 0; i < BLOBS * 4; i += 4) {
 		// printf("%.2f %.2f %.2f\n", pos[i], pos[i + 1], pos[i + 2]);
 		pos[i] += vel[i];
 		pos[i + 1] += vel[i + 1];
 		pos[i + 2] += vel[i + 2];
-		pos[i + 3] = pow(sin(pos[i + 2]) + 0.5, 2) * 20;
+		pos[i + 3] = pow(sin(pos[i + 2]) + 5.5, 2) * 30;
 		if (pos[i] < -xypad) { // x
 			vel[i] = fabs(vel[i]);
 			pos[i] = -xypad;
@@ -223,6 +231,17 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 			pos[i] += (pos[j] - pos[i]) * dis;
 			pos[i + 1] += (pos[j + 1] - pos[i + 1]) * dis;
 		}
+			static float dis;
+			dis = sqrt(
+				pow(pos[i] - mouseX, 2) +
+				pow(pos[i + 1] - mouseY, 2)
+			) - 1e3;
+			if (dis < 0.1) dis = 0.1;
+			dis = 10 - sqrt(30 / dis);
+			dis /= 1e4;
+			pos[i] += (mouseX - pos[i]) * dis;
+			pos[i + 1] += (mouseY - pos[i + 1]) * dis;
+		
 		// // Clamp
 		// #define CLAMP 1
 		// if (vel[i] < -CLAMP) vel[i] = -CLAMP;
@@ -253,21 +272,21 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 	static RGB rgb;
 	// printf("\x1b[2J\x1b[H");
 	// Bg
-	hsl.h = fmod(time / 100, 0.5);
+	hsl.h = fmod(time / 100, 1);
 	hsl.s = fmod(5 + time / 200, 0.5) + 0.25;
 	hsl.l = fmod(10 + time / 300, 0.5) + 0.25;
 	rgb = HSLtoRGB(hsl);
 	// printf("bg: %d %d %d\n", (int)(rgb.r * 255), (int)(rgb.g * 255), (int)(rgb.b *255));
 	glUniform3f(glGetUniformLocation(shader, "bg"), rgb.r, rgb.g, rgb.b);
 	// Fg
-	hsl.h = fmod(5 + time / 150, 0.6);
+	hsl.h = fmod(5 + time / 150, 1);
 	hsl.s = fmod(10 + time / 250, 0.6) + 0.2;
 	hsl.l = fmod(15 + time / 350, 0.6) + 0.2;
 	rgb = HSLtoRGB(hsl);
 	// printf("fg: %d %d %d\n", (int)(rgb.r * 255), (int)(rgb.g * 255), (int)(rgb.b *255));
 	glUniform3f(glGetUniformLocation(shader, "fg"), rgb.r, rgb.g, rgb.b);
 	// Hg
-	hsl.h = fmod(20 + time / 200, 0.9);
+	hsl.h = fmod(20 + time / 200, 1);
 	hsl.s = fmod(25 + time / 300, 0.8) + 0.2;
 	hsl.l = fmod(30 + time / 400, 0.8) + 0.2;
 	rgb = HSLtoRGB(hsl);
@@ -276,11 +295,6 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 
 	// Pass size
     glUniform2f(glGetUniformLocation(shader, "size"), w, h);
-
-    // Pass mouse
-    static double mouseX, mouseY;
-    glfwGetCursorPos(window, &mouseX, &mouseY);
-    glUniform2f(glGetUniformLocation(shader, "mouse"), mouseX, h - mouseY);
 
 	// Pass btn
 	static int btn;
