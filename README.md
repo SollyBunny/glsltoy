@@ -20,6 +20,12 @@ GLSL Toy is a [ShaderToy](https://www.shadertoy.com/) clone meant with more free
 	./glsl metablobs
 	```
 
+## Eye Candy
+![a.webp](eyecandy/a.webp)
+![b.webp](eyecandy/b.webp)
+![c.webp](eyecandy/c.webp)
+![d.webp](eyecandy/d.webp)
+
 ## Making Shaders
 
 Each shader project is stored independently in a folder.

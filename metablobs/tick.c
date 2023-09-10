@@ -135,7 +135,7 @@ float timeOffset;
 
 void init(GLFWwindow* window, GLuint shader, int w, int h) {
 
-	timeOffset = fmod(rand(), 1e3);
+	timeOffset = fmod(rand(), 1e5);
 
 	for (unsigned int i = 0; i < BLOBS * 4; i += 4) {
 		vel[i]     = (randf() * 0.5 + 1) * rands();
