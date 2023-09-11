@@ -19,7 +19,7 @@
 #include <dlfcn.h>
 #include <sys/wait.h>
 
-#define FPS 20
+#define FPS 30
 
 extern void tick(GLFWwindow* window, GLuint shader, int w, int h);
 
@@ -42,29 +42,37 @@ void warn(char *msg) {
 	printf("\x1b[0m\n");
 }
 
-// Function to read shader code from a file
-char* readShaderFile(const char* filePath) {
+// Function to read code from a file
+char* readFile(const char* filePath) {
 	FILE* file = fopen(filePath, "r");
-	if (!file) {
-		return NULL;
-	}
-
+	if (!file) return NULL;
 	fseek(file, 0, SEEK_END);
 	long length = ftell(file);
 	fseek(file, 0, SEEK_SET);
-
 	char* buffer = (char*)malloc(length + 1);
 	if (!buffer) {
 		fprintf(stderr, "Memory allocation error\n");
 		fclose(file);
 		return NULL;
 	}
-
 	fread(buffer, 1, length, file);
 	buffer[length] = '\0';
 	fclose(file);
-
 	return buffer;
+}
+
+// Compile a shader
+GLuint compileShader(GLenum shaderType, const char* shaderSource) {
+	GLuint shader = glCreateShader(shaderType);
+	glShaderSource(shader, 1, (const GLchar * const*)&shaderSource, NULL);
+	glCompileShader(shader);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+	glGetShaderInfoLog(shader, sizeof(buff), NULL, buff);
+	if (!success) {
+		printf("%s\n", buff);
+		die("Shader compilation failed");	
+	}
+	return shader;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -161,9 +169,8 @@ int main(int argc, char *argv[]) {
 	glfwMakeContextCurrent(window);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-	if (glewInit() != GLEW_OK) {
+	if (glewInit() != GLEW_OK)
 		die("Failed to initialize GLEW");
-	}
 
 	// Vertex Shader
 	char* vertexShaderSource =
@@ -173,20 +180,25 @@ int main(int argc, char *argv[]) {
 			"gl_Position = vec4(position, 0.0, 1.0);"
 		"}"
 	;
+	GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
 
-	// Read fragment shader code from file
+	// Fragment Shader
 	sprintf(buff, "%s/shader.glsl", sofile);
-	char* fragmentShaderSource = readShaderFile(buff);
-	if (!fragmentShaderSource) {
-		die("No shader.glsl found");
+	char* fragmentShaderSource = readFile(buff);
+	if (!fragmentShaderSource) die("No shader.glsl found");
+	GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
+	free(fragmentShaderSource);
+
+	// Compute Shader
+	sprintf(buff, "%s/compute.glsl", sofile);
+	char* computeShaderSource = readFile(buff);
+	GLuint computeShader = -1;
+	if (computeShaderSource) {
+		computeShader = compileShader(GL_COMPUTE_SHADER, computeShaderSource);
+		free(computeShaderSource);
 	}
 
-	// Create and compile vertex shader
-	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, (const GLchar * const*)&vertexShaderSource, NULL);
-	glCompileShader(vertexShader);
-
-	// Check for compile errors in the vertex shader
+	// Check for compile errors in the compute shader
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
 	glGetShaderInfoLog(vertexShader, sizeof(buff), NULL, buff);
 	printf("%s\n", buff);
@@ -194,26 +206,23 @@ int main(int argc, char *argv[]) {
 		die("Vertex shader compilation failed");
 	}
 
-	// Create and compile fragment shader
-	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, (const GLchar * const*)&fragmentShaderSource, NULL);
-	glCompileShader(fragmentShader);
-
-	// Check for compile errors in the fragment shader
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	glGetShaderInfoLog(fragmentShader, sizeof(buff), NULL, buff);
-	printf("%s\n", buff);
-	if (!success) {
-		die("Vertex shader compilation failed");
-	}
+	/*const char* computeShaderSource = "#version 430 core\n"
+    "layout(local_size_x = 1, local_size_y = 1) in;\n"
+    "layout(binding = 0) buffer DataBuffer {\n"
+    "    vec2 data[];\n"
+    "};\n"
+    "void main() {\n"
+    "    uint id = gl_GlobalInvocationID.x;\n"
+    "    data[id].x += 1.0;\n"
+    "}n";*/
 
 	GLuint shaderProgram = glCreateProgram();
 	glAttachShader(shaderProgram, vertexShader);
 	glAttachShader(shaderProgram, fragmentShader);
+	if (computeShader != -1)
+		glAttachShader(shaderProgram, computeShader);
 	glLinkProgram(shaderProgram);
 
-	// Free the allocated memory for shader source
-	free(fragmentShaderSource);
 
 	srand(time(NULL));
 

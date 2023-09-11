@@ -76,14 +76,15 @@ void main() {
     vec2 dist = vec2(gl_FragCoord) - vec2(mouse);
     float radius = length(dist);
     if (radius < 100) {
-        coord += dist * sin((1 - radius / 100) * 2 * 3.14);
+        coord += dist * cos((1 - radius / 100) * 2 * 3.14);
     }
-    
+
     for (int i = 0; i < BLOBS; ++i) {
         dis = (
             pow(pos[i].x - coord.x, 2) +
             pow(pos[i].y - coord.y, 2)
         );
+        if (dis > 5e6) continue;
         // if (dis < 10.0) {
         //     FragColor = vec4(0.0, 0.0, 0.0, 1.0);
         //     return;
