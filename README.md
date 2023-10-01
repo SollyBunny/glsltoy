@@ -84,7 +84,7 @@ tick.so: tick.c
 float x, y;
 float xv, yv;
 
-void init(GLFWwindow* window, GLuint shader, int w, int h) {
+void init(GLFWwindow* window, GLuint shader, GLuint compute, int w, int h) {
 	// Optional
 	// Called on first frame
 	x = rand() / (float)RAND_MAX * w;
@@ -93,7 +93,7 @@ void init(GLFWwindow* window, GLuint shader, int w, int h) {
 	yv = 2;
 }
 
-void tick(GLFWwindow* window, GLuint shader, int w, int h) {
+void tick(GLFWwindow* window, GLuint shader, GLuint compute, int w, int h) {
 	// Optional
 	// Called every frame
 	x += xv;

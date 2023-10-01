@@ -5,7 +5,6 @@
 out vec4 FragColor;
 
 uniform vec2 size;
-uniform float time;
 uniform vec3 mouse;
 
 layout (std140) uniform Blobs {
@@ -70,8 +69,8 @@ void main() {
     vec4 noise;
     noise = texture(noiseTexture, vec2(gl_FragCoord) / 256.0 + noiseOffset);
     vec2 coord = vec2(
-        gl_FragCoord.x + noise.r * 30.0,
-        gl_FragCoord.y + noise.g * 30.0
+        gl_FragCoord.x + noise.r * 100.f,
+        gl_FragCoord.y + noise.g * 100.f
     );
     vec2 dist = vec2(gl_FragCoord) - vec2(mouse);
     float radius = length(dist);

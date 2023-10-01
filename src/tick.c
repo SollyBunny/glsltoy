@@ -6,11 +6,11 @@ int getMouseButtonState(GLFWwindow* window, int button) {
     return glfwGetMouseButton(window, button);
 }
 
-void init(GLFWwindow* window, GLuint shader, int w, int h) {
+void init(GLFWwindow* window, GLuint shader, GLuint compute, int w, int h) {
 
 }
 
-void tick(GLFWwindow* window, GLuint shader, int w, int h) {
+void tick(GLFWwindow* window, GLuint shader, GLuint compute, int w, int h) {
 
 	// Pass resolution
     glUniform2f(glGetUniformLocation(shader, "resolution"), w, h);

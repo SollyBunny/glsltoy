@@ -6,7 +6,7 @@ int getMouseButtonState(GLFWwindow* window, int button) {
     return glfwGetMouseButton(window, button);
 }
 
-void tick(GLFWwindow* window, GLuint shader, int w, int h) {
+void tick(GLFWwindow* window, GLuint shader, GLuint compute, int w, int h) {
 
 	// Pass time
     static float time;
