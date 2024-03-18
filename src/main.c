@@ -42,6 +42,10 @@ void warn(char *msg) {
 	printf("\x1b[0m\n");
 }
 
+void errorCallback(int id, const char *desc) {
+	printf("GL Error %d: %s\n", id, desc);
+}
+
 // Function to read shader code from a file
 char* readShaderFile(const char* filePath) {
 	FILE* file = fopen(filePath, "r");
@@ -91,6 +95,10 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	if (sofile == NULL) {
+		die("Please provide a directory to use");
+	}
+
 	// Check if sofile exists and is a directory
 	if (access(sofile, F_OK) != 0) {
 		die("Folder not found");
@@ -107,27 +115,48 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (child_pid == 0) { // I'm the child
-		execlp("make", "make", "-C", sofile, NULL);
+		#ifdef DEBUG
+			execlp("make", "make", "tick-debug", "-C", sofile, NULL);
+		#else
+			execlp("make", "make", "-C", sofile, NULL);
+		#endif
 		die("Failed to run make file");
 	}
 	wait(NULL);
 
+	// Chdir
+	chdir(sofile);
+
 	// Load tick function
-	sprintf(buff, "%s/tick.so", sofile);
-	handle = dlopen(buff, RTLD_LAZY);
-	if (!handle) {
-		strcpy(buff, dlerror()); // Save error just in case
+	#ifdef DEBUG
+		handle = dlopen("./tick-debug.so", RTLD_LAZY);
+	#else
 		handle = dlopen("./tick.so", RTLD_LAZY);
+	#endif
+	if (!handle) {
+		#ifdef DEBUG
+			printf("Couldn't open %s/tick-debug.so: %s\n", sofile, dlerror());
+			handle = dlopen("./tick-debug.so", RTLD_LAZY);
+		#else
+			printf("Couldn't open %s/tick.so: %s\n", sofile, dlerror());
+			handle = dlopen("./tick.so", RTLD_LAZY);
+		#endif
 		if (!handle) {
-			printf("%s\n%s\n", buff, dlerror());
-			die("Coudn't open tick.so");
+			chdir("..");
+			#ifdef DEBUG
+				printf("Couldn't open tick-debug.so: %s\n", dlerror());
+				die("Coudn't open tick-debug.so");
+			#else
+				printf("Couldn't open tick.so: %s\n", dlerror());
+				die("Coudn't open tick.so");
+			#endif
 		}
 	}
 
 	// Get a pointer to the tick function
 	TickFunction tick = (TickFunction)dlsym(handle, "tick");
 	if (!tick) {
-	   	printf("%s\n", dlerror());
+	   	printf("Error: %s\n", dlerror());
 		dlclose(handle);
 		die("Coudn't get tick function");
 	}
@@ -139,6 +168,9 @@ int main(int argc, char *argv[]) {
 	if (!glfwInit()) {
 		die("Failed to initialize GLFW");
 	}
+
+	// Set error handler
+	glfwSetErrorCallback(errorCallback);
 
 	GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "GLSLToy", NULL, NULL);
 	if (!window) {
@@ -160,6 +192,7 @@ int main(int argc, char *argv[]) {
 	XSync(xDisplay, False);
 	glfwMakeContextCurrent(window);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSwapInterval(1);
 
 	if (glewInit() != GLEW_OK) {
 		die("Failed to initialize GLEW");
@@ -175,8 +208,7 @@ int main(int argc, char *argv[]) {
 	;
 
 	// Read fragment shader code from file
-	sprintf(buff, "%s/shader.glsl", sofile);
-	char* fragmentShaderSource = readShaderFile(buff);
+	char* fragmentShaderSource = readShaderFile("shader.glsl");
 	if (!fragmentShaderSource) {
 		die("No shader.glsl found");
 	}
@@ -189,7 +221,6 @@ int main(int argc, char *argv[]) {
 	// Check for compile errors in the vertex shader
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
 	glGetShaderInfoLog(vertexShader, sizeof(buff), NULL, buff);
-	printf("%s\n", buff);
 	if (!success) {
 		die("Vertex shader compilation failed");
 	}
@@ -231,6 +262,7 @@ int main(int argc, char *argv[]) {
 	sleepTime.tv_nsec = 0;
 	
 	while (!glfwWindowShouldClose(window)) {
+
 		// printf("\x1b[2J\x1b[H");
 		time = glfwGetTime();
 		dt = time - lasttime;

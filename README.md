@@ -26,6 +26,14 @@ GLSL Toy is a [ShaderToy](https://www.shadertoy.com/) clone meant with more free
 ![c.webp](eyecandy/c.webp)
 ![d.webp](eyecandy/d.webp)
 
+## TODO
+
+* (bring back) compute shader support
+* frame buffer to access previous frame
+* remove all my debug statements
+* cleanup and normalize errors
+* add more examples
+
 ## Making Shaders
 
 Each shader project is stored independently in a folder.

@@ -41,36 +41,10 @@ typedef struct {
     double l; // Lightness in range [0, 1]
 } HSL;
 
-typedef struct {
-    double r; // Red in range [0, 1]
-    double g; // Green in range [0, 1]
-    double b; // Blue in range [0, 1]
-} RGB;
-
-double hue2rgb(double p, double q, double t) {
-    if (t < 0.0) t += 1.0;
-    if (t > 1.0) t -= 1.0;
-    if (t < 1.0 / 6.0) return p + (q - p) * 6.0 * t;
-    if (t < 1.0 / 2.0) return q;
-    if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
-    return p;
-}
-
-RGB HSLtoRGB(HSL hsl) {
-    RGB rgb;
-    if (hsl.s == 0) {
-        // Achromatic (gray)
-        rgb.r = rgb.g = rgb.b = hsl.l;
-    } else {
-        double q = (hsl.l < 0.5) ? (hsl.l * (1.0 + hsl.s)) : (hsl.l + hsl.s - hsl.l * hsl.s);
-        double p = 2.0 * hsl.l - q;
-        rgb.r = hue2rgb(p, q, hsl.h + 1.0 / 3.0);
-        rgb.g = hue2rgb(p, q, hsl.h);
-        rgb.b = hue2rgb(p, q, hsl.h - 1.0 / 3.0);
-    }
-
-    return rgb;
-}
+#define SLOW 1e4
+#define FAST 1e3
+static double mousedis = SLOW;
+static double mousedisdesired = SLOW;
 
 // Function to load a PNG image using libpng
 int loadPNG(const char* filename, int* width, int* height, png_bytep* image_data) {
@@ -127,10 +101,6 @@ int loadPNG(const char* filename, int* width, int* height, png_bytep* image_data
     return 1;
 }
 
-int getMouseButtonState(GLFWwindow* window, int button) {
-    return glfwGetMouseButton(window, button);
-}
-
 float timeOffset;
 
 void init(GLFWwindow* window, GLuint shader, int w, int h) {
@@ -160,7 +130,7 @@ void init(GLFWwindow* window, GLuint shader, int w, int h) {
     // Noise texture
 	int width, height;
     png_bytep image_data;
-    if (loadPNG("metablobs/noise.png", &width, &height, &image_data)) {
+    if (loadPNG("noise.png", &width, &height, &image_data)) {
         GLuint textureID;
 		glGenTextures(1, &textureID);
 		glBindTexture(GL_TEXTURE_2D, textureID);
@@ -186,19 +156,10 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
     // Pass mouse
 	static double newX, newY;
     static double mouseX, mouseY;
-	static int mouseBtn;
     glfwGetCursorPos(window, &newX, &newY);
 	mouseX = (mouseX * 5 + newX) / 6;
 	mouseY = (mouseY * 5 + newY) / 6;
-	if (getMouseButtonState(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-		mouseBtn = 1;
-	else if (getMouseButtonState(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-		mouseBtn = 2;
-	else if (getMouseButtonState(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
-		mouseBtn = 3;
-	else
-		mouseBtn = 0;
-    glUniform3f(glGetUniformLocation(shader, "mouse"), mouseX, h - mouseY, mouseBtn);
+    glUniform2f(glGetUniformLocation(shader, "mouse"), mouseX, h - mouseY);
 
 	for (unsigned int i = 0; i < BLOBS * 4; i += 4) {
 		// printf("%.2f %.2f %.2f\n", pos[i], pos[i + 1], pos[i + 2]);
@@ -206,26 +167,6 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 		pos[i + 1] += vel[i + 1];
 		pos[i + 2] += vel[i + 2];
 		pos[i + 3] = pow(sin(pos[i + 2]) + 5.5, 2) * 30;
-		if (pos[i] < -xypad) { // x
-			vel[i] = fabs(vel[i]);
-			pos[i] = -xypad;
-		} else if (pos[i] > w + xypad) {
-			vel[i] = -fabs(vel[i]);
-			pos[i] = w + xypad;
-		} else if (pos[i + 1] < -xypad) { // y
-			vel[i + 1] = fabs(vel[i + 1]);;
-			pos[i + 1] = -xypad;
-		} else if (pos[i + 1] > h + xypad) {
-			vel[i + 1] = -fabs(vel[i + 1]);
-			pos[i + 1] = h + xypad;
-		}
-		if (pos[i + 2] < 0.1) { // z
-			vel[i + 2] = fabs(vel[i + 2]);
-			pos[i + 2] = 0.1;
-		} else if (pos[i + 2] > z) {
-			vel[i + 2] = fabs(vel[i + 2]) * -1;
-			pos[i + 2] = z;
-		}
 		// Gravity
 		for (int j = 0; j < i; j += 4) {
 			static float dis;
@@ -240,26 +181,37 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 			pos[i] += (pos[j] - pos[i]) * dis;
 			pos[i + 1] += (pos[j + 1] - pos[i + 1]) * dis;
 		}
-			static float dis;
-			dis = sqrt(
-				pow(pos[i] - mouseX, 2) +
-				pow(pos[i + 1] - mouseY, 2)
-			) - 1e3;
-			if (dis < 0.1) dis = 0.1;
-			dis = 10 - sqrt(30 / dis);
-			dis /= 1e4;
-			pos[i] += (mouseX - pos[i]) * dis;
-			pos[i + 1] += (mouseY - pos[i + 1]) * dis;
-		
-		// // Clamp
-		// #define CLAMP 1
-		// if (vel[i] < -CLAMP) vel[i] = -CLAMP;
-		// else if (vel[i] > CLAMP) vel[i] = CLAMP;
-		// if (vel[i + 1] < -CLAMP) vel[i + 1] = -CLAMP;
-		// else if (vel[i + 1] > CLAMP) vel[i + 1] = CLAMP;
-		// // Friction
-		// vel[i] *= 0.9;
-		// vel[i + 1] *= 0.9;
+		static float dis;
+		dis = sqrt(
+			pow(pos[i] - mouseX, 2) +
+			pow(pos[i + 1] - mouseY, 2)
+		) - 1e3;
+		if (dis < 0.1) dis = 0.1;
+		dis = 10 - sqrt(30 / dis);
+		dis /= mousedis;
+		pos[i] += (mouseX - pos[i]) * dis;
+		pos[i + 1] += (mouseY - pos[i + 1]) * dis;
+		// Bounds
+		if (pos[i] < -xypad) { // x
+			vel[i] = fabs(vel[i]);
+			pos[i] = -xypad;
+		} else if (pos[i] > w + xypad) {
+			vel[i] = -fabs(vel[i]);
+			pos[i] = w + xypad;
+		} else if (pos[i + 1] < -xypad) { // y
+			vel[i + 1] = fabs(vel[i + 1]);
+			pos[i + 1] = -xypad;
+		} else if (pos[i + 1] > h + xypad) {
+			vel[i + 1] = -fabs(vel[i + 1]);
+			pos[i + 1] = h + xypad;
+		}
+		if (pos[i + 2] < 0.1) { // z
+			vel[i + 2] = fabs(vel[i + 2]);
+			pos[i + 2] = 0.1;
+		} else if (pos[i + 2] > z) {
+			vel[i + 2] = fabs(vel[i + 2]) * -1;
+			pos[i + 2] = z;
+		}
 	}
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(pos), pos, GL_STATIC_DRAW); 
 	GLuint blockIndex = glGetUniformBlockIndex(shader, "Blobs");
@@ -278,43 +230,37 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 
 	// Pass colors
 	static HSL hsl;
-	static RGB rgb;
-	// printf("\x1b[2J\x1b[H");
+	#define DEBUGRGBHSL(name, rgb, hsl, end) printf(name ": %3d %3d %3d, %3d* %2d%% %2d%%" end, (int)(rgb.r * 255), (int)(rgb.g * 255), (int)(rgb.b * 255), (int)(hsl.h * 360), (int)(hsl.h * 100), (int)(hsl.l * 100))
 	// Bg
 	hsl.h = fmod(time / 100, 1);
-	hsl.s = fmod(5 + time / 200, 0.5) + 0.25;
-	hsl.l = fmod(10 + time / 300, 0.5) + 0.25;
-	rgb = HSLtoRGB(hsl);
-	// printf("bg: %d %d %d\n", (int)(rgb.r * 255), (int)(rgb.g * 255), (int)(rgb.b *255));
-	glUniform3f(glGetUniformLocation(shader, "bg"), rgb.r, rgb.g, rgb.b);
+	hsl.s = (sin(5 + time / 200) + 1) / 2;
+	hsl.l = (sin(10 + time / 100) + 1) / 6 + 0.3;
+	// DEBUGRGBHSL("bg", rgb, hsl, " ");
+	glUniform3f(glGetUniformLocation(shader, "bg"), hsl.h, hsl.s, hsl.l);
 	// Fg
-	hsl.h = fmod(5 + time / 150, 1);
-	hsl.s = fmod(10 + time / 250, 0.6) + 0.2;
-	hsl.l = fmod(15 + time / 350, 0.6) + 0.2;
-	rgb = HSLtoRGB(hsl);
-	// printf("fg: %d %d %d\n", (int)(rgb.r * 255), (int)(rgb.g * 255), (int)(rgb.b *255));
-	glUniform3f(glGetUniformLocation(shader, "fg"), rgb.r, rgb.g, rgb.b);
+	hsl.h = fmod(hsl.h + (sin(time / 20) / 6.0 + 1.0 / 6.0), 1);
+	hsl.s = (sin(10 + time / 250) + 1) / 2;
+	hsl.l = (sin(15 + time / 150) + 1) / 6 + 0.3;
+	// DEBUGRGBHSL("fg", rgb, hsl, " ");
+	glUniform3f(glGetUniformLocation(shader, "fg"), hsl.h, hsl.s, hsl.l);
 	// Hg
-	hsl.h = fmod(20 + time / 200, 1);
-	hsl.s = fmod(25 + time / 300, 0.8) + 0.2;
-	hsl.l = fmod(30 + time / 400, 0.8) + 0.2;
-	rgb = HSLtoRGB(hsl);
-	// printf("hg: %d %d %d\n", (int)(rgb.r * 255), (int)(rgb.g * 255), (int)(rgb.b *255));
-	glUniform3f(glGetUniformLocation(shader, "hg"), rgb.r, rgb.g, rgb.b);
+	hsl.h = fmod(hsl.h + (sin(time / 20) / 3.0 + 1.0 / 3.0), 1);
+	hsl.s = (sin(25 + time / 300) + 1);
+	hsl.l = (sin(30 + time / 200) + 1) / 6 + 0.5;
+	// DEBUGRGBHSL("hg", rgb, hsl, "\n");
+	glUniform3f(glGetUniformLocation(shader, "hg"), hsl.h, hsl.s, hsl.l);
 
 	// Pass size
     glUniform2f(glGetUniformLocation(shader, "size"), w, h);
 
-	// Pass btn
-	static int btn;
-	if (getMouseButtonState(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-		btn = 1;
-	else if (getMouseButtonState(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-		btn = 2;
-	else if (getMouseButtonState(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
-		btn = 3;
-	else
-		btn = 0;
-	glUniform1i(glGetUniformLocation(shader, "btn"), btn);
+	// Mouse distance
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+		mousedisdesired = FAST;
+	} else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+		mousedisdesired = FAST / 2;
+	} else {
+		mousedisdesired = SLOW;
+	}
+	mousedis = (mousedisdesired + mousedis * 29) / 30;
 
 }

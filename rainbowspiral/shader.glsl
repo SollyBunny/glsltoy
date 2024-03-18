@@ -49,7 +49,7 @@ void main() {
     float index =
         gl_FragCoord.x
     	+ time
-    	+ sin((mouse.x - gl_FragCoord.x) / (mouse.y - gl_FragCoord.y))
+    	+ atan(mouse.y - gl_FragCoord.y, mouse.x - gl_FragCoord.x) / 3.14 * 16
     ;
     FragColor = vec4(rainbow(index), 1.0);
 
