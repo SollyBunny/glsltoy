@@ -172,6 +172,17 @@ int main(int argc, char *argv[]) {
 	// Set error handler
 	glfwSetErrorCallback(errorCallback);
 
+	// TODO: either make window span all monitor space or spawn a window on every monitor
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+	glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
+	glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
+	glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
+	glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+	glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
+	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+	glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_TRUE);
 	GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "GLSLToy", NULL, NULL);
 	if (!window) {
 		glfwTerminate();
@@ -179,7 +190,6 @@ int main(int argc, char *argv[]) {
 	}
 	Display *xDisplay = glfwGetX11Display();
 	Window xWindow = glfwGetX11Window(window);
-	XUnmapWindow(xDisplay, xWindow);
 	XSync(xDisplay, False);
 	XSetWindowAttributes xAttrs;
 	xAttrs.override_redirect = True;
