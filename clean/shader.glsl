@@ -5,6 +5,8 @@
 
 out vec4 FragColor;
 
+precision highp float;
+
 uniform vec2 size;
 uniform float time;
 uniform vec2 mouse;
@@ -79,6 +81,10 @@ void main() {
             pow(pos[i].x - coord.x, 2) +
             pow(pos[i].y - coord.y, 2)
         );
+        // if (dis < 10.0) {
+        //     FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        //     return;
+        // }
         index += 1.0 / dis * pos[i].w;
     }
     dis = (
@@ -87,6 +93,6 @@ void main() {
     );
     index += 1.0 / dis * (1000.0 + 500.0 * sin((time + cos(coord.x * coord.y)) / 20.0));
 	
-	// noise = texture(noiseTexture, coord / 1024.0 + noiseOffset);
-    FragColor.rgb = (lava(index)) * 0.8;
+	noise = texture(noiseTexture, coord / 1024.0 + noiseOffset);
+    FragColor.rgb = (lava(index) + vec3(noise) / 1.2) * 0.8;
 }

@@ -1,3 +1,4 @@
 terraria/assetsrc/
 *-debug
 */*-debug
+.vscode

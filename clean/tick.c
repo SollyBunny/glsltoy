@@ -30,9 +30,8 @@ void warn(char *msg) {
 GLfloat pos[BLOBS * 4];
 float vel[BLOBS * 4];
 
+float z = 6.28;
 int xypad = 10;
-float zmin = 100;
-float zmax = 200;
 
 GLuint ubo;
 
@@ -114,7 +113,7 @@ void init(GLFWwindow* window, GLuint shader, int w, int h) {
 		vel[i + 2] = (randf() * 0.01 + 0.01) * rands();
 		pos[i]     = randf() * w;
 		pos[i + 1] = randf() * h;
-		pos[i + 2] = randf() * (zmax - zmin) + zmin;
+		pos[i + 2] = randf() * (z - 0.5) + 0.5;
 	}
 
 	// Create and bind a uniform buffer object (UBO)
@@ -206,12 +205,12 @@ void tick(GLFWwindow* window, GLuint shader, int w, int h) {
 			vel[i + 1] = -fabs(vel[i + 1]);
 			pos[i + 1] = h + xypad;
 		}
-		if (pos[i + 2] < zmin) { // z
+		if (pos[i + 2] < 0.1) { // z
 			vel[i + 2] = fabs(vel[i + 2]);
-			pos[i + 2] = zmin + 0.1;
-		} else if (pos[i + 2] > zmax) {
+			pos[i + 2] = 0.1;
+		} else if (pos[i + 2] > z) {
 			vel[i + 2] = fabs(vel[i + 2]) * -1;
-			pos[i + 2] = zmax - 0.1;
+			pos[i + 2] = z;
 		}
 	}
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(pos), pos, GL_STATIC_DRAW); 

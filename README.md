@@ -1,5 +1,7 @@
 # GLSL Toy
 
+## This is discontinued 
+
 GLSL Toy is a [ShaderToy](https://www.shadertoy.com/) clone meant with more freedoms.
 1. Runs natively ⚡
 2. Works as a live background 🖼️ *(Linux only)*
@@ -39,7 +41,6 @@ GLSL Toy is a [ShaderToy](https://www.shadertoy.com/) clone meant with more free
 Each shader project is stored independently in a folder.
 
 ### `shader.glsl`
-This is the only required file: The fragment shader is used to determine each pixel's color.
 
 Here is an example:
 ```glsl
