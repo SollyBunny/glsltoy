@@ -271,11 +271,41 @@ int main(int argc, char *argv[]) {
 		glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
 		glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
 		glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
-		glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 		glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
-		glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 		glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_TRUE);
 		glfwWindowHint(GLFW_MOUSE_PASSTHROUGH, GLFW_TRUE);
+
+		int init = 0;
+		int x1, y1, x2, y2;
+		int x1mon, y1mon, x2mon, y2mon;
+	
+		int monitorCount;
+		GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+	
+		for (int i = 0; i < monitorCount; ++i) {
+			GLFWmonitor* monitor = monitors[i];
+	
+			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+			glfwGetMonitorPos(monitor, &x1mon, &x2mon);
+			x2mon = x1mon + mode->width;
+			y2mon = y1mon + mode->height;
+	
+			if (!init) {
+				x1 = x1mon; y1 = y1mon;
+				x2 = x2mon; y2 = x2mon;
+				init = 1;
+			} else {
+				if (x1 > x1mon) x1 = x1mon;
+				if (y1 > y1mon) y1 = y1mon;
+				if (x2 < x2mon) x2 = x2mon;
+				if (y2 < y2mon) y2 = y2mon;
+			}
+		}
+		if (init) {
+			windowWidth = x2 - x1;
+			windowHeight = y2 - y1;
+		}
+		
 		window = glfwCreateWindow(windowWidth, windowHeight, "GLSLToy", NULL, NULL);
 		if (!window) {
 			glfwTerminate();
